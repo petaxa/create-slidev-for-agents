@@ -1,0 +1,20 @@
+:root {
+  --deck-paper: #fffdfa;
+  --deck-paper-warm: #f6f1ea;
+  --deck-ink: #121722;
+  --deck-muted: rgba(48, 47, 44, 0.6);
+  --deck-soft: rgba(48, 47, 44, 0.08);
+  --deck-rule: rgba(123, 116, 104, 0.46);
+  --deck-accent: #2f7f7a;
+  --deck-code-bg: #151a22;
+  --deck-code-chrome: #11161d;
+  --deck-code-ink: #e9e4d8;
+  --deck-shadow: 0 1.1rem 3rem rgba(32, 28, 21, 0.08);
+  --deck-font-sans:
+    "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", Meiryo,
+    sans-serif;
+  --deck-font-mono: "Courier New", Courier, monospace;
+  --deck-margin-x: 3.95rem;
+  --deck-margin-top: 2.65rem;
+  --deck-margin-bottom: 3.15rem;
+}

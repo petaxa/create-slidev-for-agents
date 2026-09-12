@@ -1,0 +1,4 @@
+# Protect the CI and release configuration.
+/.github/workflows/ @petaxa
+/.github/dependabot.yml @petaxa
+/.github/CODEOWNERS @petaxa

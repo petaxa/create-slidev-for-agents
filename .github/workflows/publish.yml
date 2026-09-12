@@ -1,0 +1,165 @@
+name: Publish npm package
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Test and pack package
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Verify tool versions
+        run: |
+          node --version
+          npm --version
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Verify stable package version
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from "node:fs/promises";
+
+          const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+          const stableSemver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
+          if (packageJson.name !== "create-slidev-for-agents") {
+            throw new Error(`公開対象ではないpackage名です: ${packageJson.name}`);
+          }
+
+          if (typeof packageJson.version !== "string" || !stableSemver.test(packageJson.version)) {
+            throw new Error(`安定版ではないversionは公開できません: ${packageJson.version}`);
+          }
+
+          console.log(`Package: ${packageJson.name}@${packageJson.version}`);
+          NODE
+
+      - name: Create package directory
+        run: mkdir package
+
+      - name: Create package tarball
+        run: pnpm pack --pack-destination package
+
+      - name: Verify generated tarball
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir } from "node:fs/promises";
+
+          const entries = await readdir("package");
+          const tarballs = entries.filter((entry) => entry.endsWith(".tgz"));
+
+          if (tarballs.length !== 1) {
+            throw new Error(`tarballは1個である必要があります。実際の個数: ${tarballs.length}`);
+          }
+
+          console.log(`Generated tarball: ${tarballs[0]}`);
+          NODE
+
+      - name: Show package contents
+        run: tar --list --file package/*.tgz
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-package
+          path: package/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  stage:
+    name: Stage package on npm
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: npm
+
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Verify supported npm version
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+
+          const version = execFileSync("npm", ["--version"], { encoding: "utf8" }).trim();
+          const [major, minor] = version.split(".").map(Number);
+
+          if (!Number.isInteger(major) || !Number.isInteger(minor) || major < 11 || (major === 11 && minor < 15)) {
+            throw new Error(`npm 11.15.0以上が必要です。現在のバージョン: ${version}`);
+          }
+
+          console.log(`npm version: ${version}`);
+          NODE
+
+      - name: Download package artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: npm-package
+          path: package
+
+      - name: Verify downloaded tarball
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir } from "node:fs/promises";
+
+          const entries = await readdir("package");
+          const tarballs = entries.filter((entry) => entry.endsWith(".tgz"));
+
+          if (tarballs.length !== 1) {
+            throw new Error(`tarballは1個である必要があります。実際の個数: ${tarballs.length}`);
+          }
+
+          console.log(`Publishing tarball: ${tarballs[0]}`);
+          NODE
+
+      - name: Show package contents again
+        run: tar --list --file package/*.tgz
+
+      - name: Stage package on npm
+        run: npm stage publish package/*.tgz --access public

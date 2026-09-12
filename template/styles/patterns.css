@@ -1,0 +1,264 @@
+.deck-centered {
+  display: grid;
+  justify-items: start;
+  gap: 1.6rem;
+  width: min(68rem, 100%);
+}
+
+.deck-section-cover {
+  display: grid;
+  width: 100%;
+  place-items: center;
+  text-align: center;
+}
+
+.slidev-layout .deck-section-cover__title {
+  max-width: 60rem;
+  color: var(--deck-ink);
+  background: none;
+  font-size: 5.2rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.05;
+  text-align: center;
+  text-wrap: balance;
+  -webkit-text-fill-color: currentColor;
+}
+
+.slidev-layout .deck-statement {
+  max-width: 66rem;
+  color: var(--deck-ink);
+  font-size: 3.5rem;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.28;
+  text-wrap: balance;
+}
+
+.slidev-layout .deck-statement strong {
+  display: inline-block;
+  font-size: 1.22em;
+  font-weight: 950;
+}
+
+.slidev-layout .deck-note {
+  max-width: 54rem;
+  color: var(--deck-muted);
+  font-size: 1.18rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.deck-recap {
+  display: grid;
+  width: min(64rem, 100%);
+  padding: 0;
+  list-style: none;
+}
+
+.deck-recap li {
+  display: grid;
+  grid-template-columns: 4.4rem 10rem minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 1.25rem;
+  min-height: 5.1rem;
+  padding: 1rem 0 1.05rem;
+  border-bottom: 0.075rem solid var(--deck-rule);
+}
+
+.deck-recap li:first-child {
+  border-top: 0.075rem solid var(--deck-rule);
+}
+
+.deck-recap__index {
+  color: var(--deck-muted);
+  font-family: var(--deck-font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.deck-recap__keyword {
+  color: var(--deck-ink);
+  font-size: 2.38rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.deck-recap__text {
+  color: rgba(18, 23, 34, 0.82);
+  font-size: 1.36rem;
+  font-weight: 750;
+  line-height: 1.42;
+}
+
+.deck-timeline {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.8rem;
+  width: min(54rem, 100%);
+  padding-top: 3.6rem;
+}
+
+.deck-timeline::before {
+  position: absolute;
+  top: 5.2rem;
+  right: 3.3rem;
+  left: 3.3rem;
+  height: 0.1rem;
+  background: var(--deck-rule);
+  content: "";
+}
+
+.deck-timeline__item {
+  position: relative;
+  display: grid;
+  min-height: 7rem;
+  place-items: start center;
+  text-align: center;
+}
+
+.deck-timeline__item::before {
+  position: absolute;
+  top: 1rem;
+  left: calc(50% - 0.58rem);
+  width: 1.16rem;
+  height: 1.16rem;
+  border: 0.18rem solid var(--deck-ink);
+  border-radius: 999px;
+  background: var(--deck-paper);
+  content: "";
+}
+
+.deck-timeline__label {
+  margin-top: 3.2rem;
+  color: var(--deck-muted);
+  font-family: var(--deck-font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.deck-timeline__title {
+  margin-top: 0.38rem;
+  color: var(--deck-ink);
+  font-size: 1.32rem;
+  font-weight: 850;
+}
+
+.slidev-layout .deck-command-heading {
+  max-width: 62rem;
+  color: var(--deck-ink);
+  background: none;
+  font-size: 3.2rem;
+  font-weight: 900;
+  line-height: 1.24;
+  -webkit-text-fill-color: currentColor;
+}
+
+.deck-command-card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(4.6rem, auto);
+  justify-self: center;
+  min-width: min(31rem, 100%);
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(123, 116, 104, 0.2);
+  border-radius: 0.5rem;
+  background: var(--deck-code-bg);
+  box-shadow: var(--deck-shadow);
+  color: var(--deck-code-ink);
+}
+
+.deck-command-card__chrome {
+  display: block;
+  min-height: 1.55rem;
+  border-bottom: 1px solid rgba(246, 241, 234, 0.08);
+  background: var(--deck-code-chrome);
+}
+
+.deck-command-card__copy {
+  position: absolute;
+  top: 0.26rem;
+  right: 0.42rem;
+  display: grid;
+  width: 1.1rem;
+  height: 1.1rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(233, 228, 216, 0.22);
+  border-radius: 0.28rem;
+  background: rgba(233, 228, 216, 0.08);
+  color: rgba(233, 228, 216, 0.86);
+  cursor: pointer;
+}
+
+.deck-command-card__copy svg {
+  width: 0.68rem;
+  height: 0.68rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.slidev-layout .deck-command-card__code {
+  display: flex;
+  align-items: center;
+  padding: 0.92rem 1.25rem 1.02rem;
+  border-radius: 0;
+  background: transparent;
+  color: var(--deck-code-ink);
+  font-family: var(--deck-font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  -webkit-text-fill-color: currentColor;
+}
+
+.deck-command-card__prompt {
+  margin-right: 0.72rem;
+  color: #6ca19b;
+}
+
+.deck-command-card__command {
+  color: #e9e4d8;
+}
+
+.slidev-layout .deck-final-word {
+  color: var(--deck-ink);
+  font-size: 6.2rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.deck-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.6rem;
+  width: min(64rem, 100%);
+}
+
+.deck-split__column {
+  padding-top: 1rem;
+  border-top: 0.12rem solid var(--deck-ink);
+}
+
+.deck-split__title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.deck-split__text {
+  margin-top: 0.9rem !important;
+  color: var(--deck-muted);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}

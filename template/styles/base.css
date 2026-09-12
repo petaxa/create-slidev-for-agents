@@ -1,0 +1,32 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.slidev-layout {
+  padding: 0;
+  background: transparent;
+  color: var(--deck-ink);
+  font-family: var(--deck-font-sans);
+}
+
+.slidev-layout h1,
+.slidev-layout h2,
+.slidev-layout h3,
+.slidev-layout p,
+.slidev-layout ol,
+.slidev-layout ul,
+.slidev-layout pre {
+  margin: 0;
+}
+
+.slidev-layout strong {
+  color: inherit;
+  font-weight: 950;
+}
+
+.deck-page {
+  position: absolute;
+  inset: 0;
+}
