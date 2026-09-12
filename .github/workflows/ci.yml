@@ -26,13 +26,6 @@ jobs:
           cache: true
           run-install: false
 
-      - name: Verify tool versions
-        run: |
-          node --version
-          npm --version
-          pnpm --version
-          vp --version
-
       - name: Install dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
@@ -46,4 +39,4 @@ jobs:
         run: vp pack
 
       - name: Verify npm package contents
-        run: pnpm pack --dry-run
+        run: vp pm pack -- --dry-run

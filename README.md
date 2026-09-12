@@ -99,7 +99,7 @@ vp install
 vp check
 vp test
 vp pack
-pnpm pack --dry-run
+vp pm pack -- --dry-run
 ```
 
 テストは Vitest API を `vite-plus/test` から利用し、CLIのビルドは `vite.config.ts` の `pack` 設定を通じて tsdown が行います。`package.json` に独自の test/build script は置かず、Vite+ の組み込みコマンドを直接使います。

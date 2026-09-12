@@ -31,13 +31,6 @@ jobs:
           cache: true
           run-install: false
 
-      - name: Verify tool versions
-        run: |
-          node --version
-          npm --version
-          pnpm --version
-          vp --version
-
       - name: Install dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
@@ -73,7 +66,7 @@ jobs:
         run: mkdir package
 
       - name: Create package tarball
-        run: pnpm pack --pack-destination package
+        run: vp pm pack --pack-destination package
 
       - name: Verify generated tarball
         run: |
