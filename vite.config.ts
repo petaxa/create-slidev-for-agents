@@ -7,9 +7,12 @@ export default defineConfig({
   },
   pack: {
     clean: true,
-    entry: ["bin/create-slidev.ts"],
+    entry: ["src/entry.ts"],
     format: ["esm"],
     outDir: "dist",
+    outputOptions: {
+      entryFileNames: "create-slidev.mjs",
+    },
     platform: "node",
     target: "node20",
   },
