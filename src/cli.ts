@@ -1,15 +1,6 @@
 import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
-import {
-  access,
-  cp,
-  mkdir,
-  readdir,
-  readFile,
-  rename,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { access, cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createInterface } from "node:readline/promises";
@@ -17,6 +8,33 @@ import { createInterface } from "node:readline/promises";
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 const templateDirectory = path.join(packageRoot, "template");
 const packageManagers = new Set(["npm", "pnpm", "yarn", "bun"]);
+
+export interface CliOptions {
+  directory?: string;
+  help: boolean;
+  install: boolean;
+  title?: string;
+  version: boolean;
+}
+
+export interface Logger {
+  log(message: string): void;
+}
+
+export interface ScaffoldOptions {
+  cwd?: string;
+  directory: string;
+  install?: boolean;
+  logger?: Logger;
+  title?: string;
+}
+
+export interface ScaffoldResult {
+  deckTitle: string;
+  packageManager: string;
+  projectName: string;
+  targetDirectory: string;
+}
 
 export const helpText = `
 Create a Slidev deck with the petaxa editorial theme.
@@ -33,8 +51,8 @@ Options:
   -v, --version         Show the package version
 `;
 
-export function parseArgs(argv) {
-  const result = {
+export function parseArgs(argv: string[]): CliOptions {
+  const result: CliOptions = {
     directory: undefined,
     help: false,
     install: false,
@@ -103,12 +121,12 @@ export function parseArgs(argv) {
   return result;
 }
 
-export function detectPackageManager(userAgent = process.env.npm_config_user_agent ?? "") {
+export function detectPackageManager(userAgent = process.env.npm_config_user_agent ?? ""): string {
   const detected = userAgent.split(" ")[0]?.split("/")[0];
   return packageManagers.has(detected) ? detected : "npm";
 }
 
-export function normalizePackageName(value) {
+export function normalizePackageName(value: string): string {
   const normalized = value
     .trim()
     .toLowerCase()
@@ -119,16 +137,13 @@ export function normalizePackageName(value) {
   return normalized || "slidev-deck";
 }
 
-export function titleFromDirectory(value) {
-  const title = value
-    .trim()
-    .replace(/[-_]+/g, " ")
-    .replace(/\s+/g, " ");
+export function titleFromDirectory(value: string): string {
+  const title = value.trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
 
   return title ? title.charAt(0).toUpperCase() + title.slice(1) : "My presentation";
 }
 
-function escapeHtml(value) {
+function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
@@ -137,11 +152,11 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;");
 }
 
-function escapeJavaScriptString(value) {
+function escapeJavaScriptString(value: string): string {
   return JSON.stringify(value).slice(1, -1);
 }
 
-async function pathExists(filePath) {
+async function pathExists(filePath: string): Promise<boolean> {
   try {
     await access(filePath, fsConstants.F_OK);
     return true;
@@ -150,7 +165,7 @@ async function pathExists(filePath) {
   }
 }
 
-async function ensureWritableTarget(targetDirectory) {
+async function ensureWritableTarget(targetDirectory: string): Promise<void> {
   if (!(await pathExists(targetDirectory))) {
     await mkdir(targetDirectory, { recursive: true });
     return;
@@ -167,9 +182,9 @@ async function ensureWritableTarget(targetDirectory) {
   }
 }
 
-async function collectFiles(directory) {
+async function collectFiles(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
+  const files: string[] = [];
 
   for (const entry of entries) {
     const entryPath = path.join(directory, entry.name);
@@ -183,7 +198,10 @@ async function collectFiles(directory) {
   return files;
 }
 
-async function replacePlaceholders(targetDirectory, replacements) {
+async function replacePlaceholders(
+  targetDirectory: string,
+  replacements: Record<string, string>,
+): Promise<void> {
   const files = await collectFiles(targetDirectory);
 
   for (const filePath of files) {
@@ -200,7 +218,7 @@ async function replacePlaceholders(targetDirectory, replacements) {
   }
 }
 
-function runInstall(packageManager, cwd) {
+function runInstall(packageManager: string, cwd: string): Promise<void> {
   const command = process.platform === "win32" ? `${packageManager}.cmd` : packageManager;
   const args = packageManager === "yarn" ? [] : ["install"];
 
@@ -224,12 +242,12 @@ function runInstall(packageManager, cwd) {
   });
 }
 
-function relativeTarget(cwd, targetDirectory) {
+function relativeTarget(cwd: string, targetDirectory: string): string {
   const relative = path.relative(cwd, targetDirectory);
   return relative && !relative.startsWith("..") ? relative : targetDirectory;
 }
 
-function quotePathForDisplay(value) {
+function quotePathForDisplay(value: string): string {
   return /\s/.test(value) ? `"${value.replaceAll('"', '\\"')}"` : value;
 }
 
@@ -239,7 +257,7 @@ export async function scaffold({
   install = false,
   logger = console,
   title,
-}) {
+}: ScaffoldOptions): Promise<ScaffoldResult> {
   if (!directory) {
     throw new Error("A target directory is required.");
   }
@@ -250,7 +268,7 @@ export async function scaffold({
   const projectName = normalizePackageName(directoryName);
   const deckTitle = (title?.trim() || titleFromDirectory(directoryName)).replace(/\s+/g, " ");
   const installCommand = packageManager === "yarn" ? "yarn" : `${packageManager} install`;
-  const runCommand = (task) => `vp run ${task}`;
+  const runCommand = (task: string) => `vp run ${task}`;
 
   await ensureWritableTarget(targetDirectory);
   await cp(templateDirectory, targetDirectory, { recursive: true });
@@ -289,12 +307,14 @@ export async function scaffold({
   return { deckTitle, packageManager, projectName, targetDirectory };
 }
 
-async function readVersion() {
-  const packageJson = JSON.parse(await readFile(path.join(packageRoot, "package.json"), "utf8"));
+async function readVersion(): Promise<string> {
+  const packageJson = JSON.parse(
+    await readFile(path.join(packageRoot, "package.json"), "utf8"),
+  ) as { version: string };
   return packageJson.version;
 }
 
-async function promptForDirectory() {
+async function promptForDirectory(): Promise<string> {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     return "my-slidev-deck";
   }
@@ -305,7 +325,7 @@ async function promptForDirectory() {
   return answer.trim() || "my-slidev-deck";
 }
 
-export async function runCli(argv) {
+export async function runCli(argv: string[]): Promise<void> {
   const options = parseArgs(argv);
 
   if (options.help) {

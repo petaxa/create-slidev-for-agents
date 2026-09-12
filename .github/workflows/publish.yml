@@ -24,27 +24,24 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@01cd61b8c8303894af8042eec331212cd78d7770 # v1.19.0
         with:
           node-version-file: .node-version
-          registry-url: https://registry.npmjs.org
-          package-manager-cache: false
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Verify tool versions
-        run: |
-          node --version
-          npm --version
-          pnpm --version
+          cache: true
+          run-install: false
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: vp install --frozen-lockfile --ignore-scripts
+
+      - name: Check source
+        run: vp check
 
       - name: Run tests
-        run: pnpm test
+        run: vp test
+
+      - name: Build CLI
+        run: vp pack
 
       - name: Verify stable package version
         run: |
@@ -69,7 +66,7 @@ jobs:
         run: mkdir package
 
       - name: Create package tarball
-        run: pnpm pack --pack-destination package
+        run: vp pm pack --pack-destination package
 
       - name: Verify generated tarball
         run: |
@@ -115,12 +112,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@01cd61b8c8303894af8042eec331212cd78d7770 # v1.19.0
         with:
           node-version-file: .node-version
           registry-url: https://registry.npmjs.org
-          package-manager-cache: false
+          run-install: false
 
       - name: Verify supported npm version
         run: |
