@@ -26,10 +26,12 @@ npm create slidev-for-agents@latest my-talk -- --title "発表タイトル"
 
 ## 現在のローカル実行
 
-まだ npm へは公開していません。このリポジトリから試す場合は次のように実行します。
+まだ npm へは公開していません。このリポジトリから試す場合は、Vite+ で TypeScript のCLIをビルドしてから実行します。
 
 ```bash
-node ./bin/create-slidev.mjs ./my-talk --title "発表タイトル"
+vp install
+vp pack
+node ./dist/create-slidev.mjs ./my-talk --title "発表タイトル"
 ```
 
 ## 生成される構造
@@ -93,9 +95,14 @@ my-talk/
 ## 開発
 
 ```bash
-pnpm test
-pnpm test:pack
+vp install
+vp check
+vp test
+vp pack
+pnpm pack --dry-run
 ```
+
+テストは Vitest API を `vite-plus/test` から利用し、CLIのビルドは `vite.config.ts` の `pack` 設定を通じて tsdown が行います。`package.json` に独自の test/build script は置かず、Vite+ の組み込みコマンドを直接使います。
 
 npm 公開は後続タスクで行います。公開前に、パッケージ名・バージョン・README のコマンド例・npm provenance の方針を最終確認します。
 

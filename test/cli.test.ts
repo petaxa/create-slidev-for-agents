@@ -1,8 +1,8 @@
-import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+
+import { expect, test } from "vite-plus/test";
 
 import {
   detectPackageManager,
@@ -11,16 +11,16 @@ import {
   parseArgs,
   scaffold,
   titleFromDirectory,
-} from "../src/cli.mjs";
+} from "../src/cli";
 
 test("help advertises the Vite+ and npm create commands", () => {
-  assert.match(helpText, /vp create slidev-for-agents/);
-  assert.match(helpText, /npm create slidev-for-agents@latest/);
-  assert.doesNotMatch(helpText, /@petaxa\/slidev/);
+  expect(helpText).toMatch(/vp create slidev-for-agents/);
+  expect(helpText).toMatch(/npm create slidev-for-agents@latest/);
+  expect(helpText).not.toMatch(/@petaxa\/slidev/);
 });
 
 test("parseArgs reads scaffold options", () => {
-  assert.deepEqual(parseArgs(["demo", "--title", "Demo Deck", "--install"]), {
+  expect(parseArgs(["demo", "--title", "Demo Deck", "--install"])).toEqual({
     directory: "demo",
     help: false,
     install: true,
@@ -30,25 +30,25 @@ test("parseArgs reads scaffold options", () => {
 });
 
 test("dependency installation is opt-in", () => {
-  assert.equal(parseArgs(["demo"]).install, false);
-  assert.equal(parseArgs(["demo", "--no-install"]).install, false);
+  expect(parseArgs(["demo"]).install).toBe(false);
+  expect(parseArgs(["demo", "--no-install"]).install).toBe(false);
 });
 
 test("parseArgs rejects the removed package manager option", () => {
-  assert.throws(() => parseArgs(["demo", "--pm", "pnpm"]), /Unknown option: --pm/);
+  expect(() => parseArgs(["demo", "--pm", "pnpm"])).toThrow(/Unknown option: --pm/);
 });
 
 test("package and title helpers create safe defaults", () => {
-  assert.equal(normalizePackageName("My Great Talk!"), "my-great-talk");
-  assert.equal(normalizePackageName("日本語"), "slidev-deck");
-  assert.equal(titleFromDirectory("my-great_talk"), "My great talk");
-  assert.equal(detectPackageManager("pnpm/11.0.0 npm/? node/v22"), "pnpm");
-  assert.equal(detectPackageManager(""), "npm");
+  expect(normalizePackageName("My Great Talk!")).toBe("my-great-talk");
+  expect(normalizePackageName("日本語")).toBe("slidev-deck");
+  expect(titleFromDirectory("my-great_talk")).toBe("My great talk");
+  expect(detectPackageManager("pnpm/11.0.0 npm/? node/v22")).toBe("pnpm");
+  expect(detectPackageManager("")).toBe("npm");
 });
 
 test("scaffold creates a blank Vite+ deck without installing", async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "create-slidev-for-agents-test-"));
-  const logs = [];
+  const logs: string[] = [];
 
   try {
     const result = await scaffold({
@@ -101,43 +101,43 @@ test("scaffold creates a blank Vite+ deck without installing", async () => {
     const installCommand =
       detectedPackageManager === "yarn" ? "yarn" : `${detectedPackageManager} install`;
 
-    assert.equal(generatedPackage.name, "sample-talk");
-    assert.equal(generatedPackage.private, true);
-    assert.equal(generatedPackage.scripts, undefined);
-    assert.match(slides, /title: "サンプル発表"/);
-    assert.doesNotMatch(slides, /__DECK_TITLE__/);
-    assert.doesNotMatch(slides, /<Slide\d+/);
-    assert.match(generatedDesign, /Editorial Paper/);
-    assert.ok(generatedReadme.includes(installCommand));
-    assert.match(generatedReadme, /vp run dev/);
-    assert.match(generatedAgents, /specs\/NN_name\.md/);
-    assert.match(generatedAgents, /ユーザーによる仕様確認を待つ/);
-    assert.match(generatedDeckConfig, /footerLabel: "サンプル発表"/);
-    assert.doesNotMatch(generatedDeckConfig, /__DECK_TITLE_UPPER__/);
-    assert.match(deployWorkflow, /vp run build --base \.\//);
-    assert.match(generatedViteConfig, /command: "slidev"/);
-    assert.match(generatedViteConfig, /build: "slidev build"/);
-    assert.match(generatedViteConfig, /command: "slidev export"/);
-    assert.match(vscodeSettings, /"editor.formatOnSave": true/);
-    assert.match(vscodeSettings, /"editor.defaultFormatter": "oxc.oxc-vscode"/);
-    assert.match(plotTemplate, /\[ページの役割\]/);
-    assert.match(feedbackTemplate, /\[修正後に満たしてほしい条件\]/);
-    assert.deepEqual(pageSpecs, []);
-    assert.deepEqual(pageFiles, []);
-    assert.ok(rootEntries.includes("AGENTS.md"));
-    assert.ok(rootEntries.includes(".github"));
-    assert.ok(rootEntries.includes(".gitignore"));
-    assert.ok(!rootEntries.includes("dot-gitignore"));
-    assert.ok(rootEntries.includes("components"));
-    assert.ok(rootEntries.includes("layouts"));
-    assert.ok(rootEntries.includes("pages"));
-    assert.ok(rootEntries.includes("specs"));
-    assert.ok(rootEntries.includes("styles"));
-    assert.ok(!rootEntries.includes("vercel.json"));
-    assert.ok(!rootEntries.includes("netlify.toml"));
-    assert.ok(!rootEntries.includes(".vercel"));
-    assert.ok(!rootEntries.includes(".netlify"));
-    assert.ok(logs.join("\n").includes(installCommand));
+    expect(generatedPackage.name).toBe("sample-talk");
+    expect(generatedPackage.private).toBe(true);
+    expect(generatedPackage.scripts).toBeUndefined();
+    expect(slides).toMatch(/title: "サンプル発表"/);
+    expect(slides).not.toMatch(/__DECK_TITLE__/);
+    expect(slides).not.toMatch(/<Slide\d+/);
+    expect(generatedDesign).toMatch(/Editorial Paper/);
+    expect(generatedReadme).toContain(installCommand);
+    expect(generatedReadme).toMatch(/vp run dev/);
+    expect(generatedAgents).toMatch(/specs\/NN_name\.md/);
+    expect(generatedAgents).toMatch(/ユーザーによる仕様確認を待つ/);
+    expect(generatedDeckConfig).toMatch(/footerLabel: "サンプル発表"/);
+    expect(generatedDeckConfig).not.toMatch(/__DECK_TITLE_UPPER__/);
+    expect(deployWorkflow).toMatch(/vp run build --base \.\//);
+    expect(generatedViteConfig).toMatch(/command: "slidev"/);
+    expect(generatedViteConfig).toMatch(/build: "slidev build"/);
+    expect(generatedViteConfig).toMatch(/command: "slidev export"/);
+    expect(vscodeSettings).toMatch(/"editor.formatOnSave": true/);
+    expect(vscodeSettings).toMatch(/"editor.defaultFormatter": "oxc.oxc-vscode"/);
+    expect(plotTemplate).toMatch(/\[ページの役割\]/);
+    expect(feedbackTemplate).toMatch(/\[修正後に満たしてほしい条件\]/);
+    expect(pageSpecs).toEqual([]);
+    expect(pageFiles).toEqual([]);
+    expect(rootEntries).toContain("AGENTS.md");
+    expect(rootEntries).toContain(".github");
+    expect(rootEntries).toContain(".gitignore");
+    expect(rootEntries).not.toContain("dot-gitignore");
+    expect(rootEntries).toContain("components");
+    expect(rootEntries).toContain("layouts");
+    expect(rootEntries).toContain("pages");
+    expect(rootEntries).toContain("specs");
+    expect(rootEntries).toContain("styles");
+    expect(rootEntries).not.toContain("vercel.json");
+    expect(rootEntries).not.toContain("netlify.toml");
+    expect(rootEntries).not.toContain(".vercel");
+    expect(rootEntries).not.toContain(".netlify");
+    expect(logs.join("\n")).toContain(installCommand);
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });
   }
@@ -159,7 +159,7 @@ test("scaffold escapes the title in TypeScript string literals", async () => {
       "utf8",
     );
 
-    assert.match(generatedDeckConfig, /footerLabel: "SAY \\"HELLO\\" \\\\ NOW"/);
+    expect(generatedDeckConfig).toMatch(/footerLabel: "SAY \\"HELLO\\" \\\\ NOW"/);
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });
   }
@@ -171,10 +171,9 @@ test("scaffold refuses to overwrite a non-empty directory", async () => {
   try {
     const logger = { log: () => {} };
     await scaffold({ cwd: temporaryRoot, directory: "existing", install: false, logger });
-    await assert.rejects(
+    await expect(
       scaffold({ cwd: temporaryRoot, directory: "existing", install: false, logger }),
-      /not empty/,
-    );
+    ).rejects.toThrow(/not empty/);
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });
   }
