@@ -26,6 +26,7 @@
     "access": "public"
   },
   "devDependencies": {
+    "@ox-content/napi": "3.2.1",
     "@types/node": "^24.0.0",
     "vite": "catalog:",
     "vite-plus": "catalog:"

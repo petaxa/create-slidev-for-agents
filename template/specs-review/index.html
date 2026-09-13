@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>仕様レビュー</title>
+  </head>
+  <body>
+    <header>
+      <div><strong>仕様レビュー</strong><span>スライド実装前に、内容と構成を確認</span></div>
+      <p>← → 前後の仕様へ <span>・ Home 最初 / End 最後</span></p>
+    </header>
+    <div class="workspace">
+      <nav aria-label="ページ仕様"><ol id="spec-list"></ol></nav>
+      <main id="reader" tabindex="0" aria-label="仕様の本文">
+        <div class="page-meta">
+          <span id="filename"></span><span id="position" role="status"></span>
+        </div>
+        <article id="content"></article>
+      </main>
+    </div>
+    <footer>
+      <span>ファイルの保存・追加・削除を自動反映</span>
+      <div>
+        <button id="previous" type="button">← 前へ</button
+        ><button id="next" type="button">次へ →</button>
+      </div>
+    </footer>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

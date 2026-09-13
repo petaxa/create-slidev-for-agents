@@ -59,6 +59,14 @@ my-talk/
 │   ├── README.md
 │   ├── _prot.md
 │   └── _feedback.md
+├── specs-review/
+│   ├── index.html
+│   ├── main.js
+│   ├── documents.js
+│   ├── model.ts
+│   ├── render.ts
+│   ├── style.css
+│   └── vite.config.ts
 ├── styles/
 │   ├── base.css
 │   ├── layouts.css
@@ -72,6 +80,8 @@ my-talk/
 ```
 
 生成直後の `pages/` には例示ページを含めません。`specs/_prot.md` を書いた後、LLM に `specs/NN_name.md` を作らせ、内容を確認してから `pages/NN_name.vue` を実装させます。実装確認後の修正は `specs/_feedback.md` に書き、仕様とページへ同時に反映させます。
+
+仕様の確認には、生成先で `vp run specs` を実行します。ox-contentでMarkdownをHTMLに変換して番号順にブラウザ表示し、左右キーで前後へ、`Home` / `End` で最初・最後へ移動できます。ファイルの保存・追加・削除も自動反映します。ビューアはローカル専用で、スライドの公開には含まれません。
 
 `slides.md` は frontmatter とスライド順を持ち、各スライドは `pages/*.vue` に分けます。ページ固有の内容と、再利用するレイアウト・デザイントークンを混ぜないための構造です。
 
