@@ -8,8 +8,7 @@
     "vue": "3.5.38"
   },
   "devDependencies": {
-    "@types/markdown-it": "14.1.2",
-    "markdown-it": "14.3.1",
+    "@ox-content/napi": "3.2.1",
     "vite": "npm:@voidzero-dev/vite-plus-core@0.3.0",
     "vite-plus": "0.3.0"
   },

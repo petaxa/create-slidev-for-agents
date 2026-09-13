@@ -44,7 +44,7 @@ vp run specs
 
 確認中の仕様はURLに保持され、再読み込みやブラウザの戻る・進むでも移動できます。Markdownの保存・追加・削除は自動反映されます。仕様がまだなければ作成方法を表示します。
 
-見出し、箇条書き、表、コードブロック、画像などのMarkdownを表示します。画像は `public/images/` に置き、`/images/example.png` または `../public/images/example.png` で参照してください。HTML・Vueコンポーネントは実行せずテキストとして表示し、Mermaidなどの独自構文はコードとして確認します。このビューアはローカルの仕様確認用で、通常のスライドビルドやGitHub Pagesには含まれません。
+ox-content（`@ox-content/napi`）でMarkdownをHTMLに変換し、見出し、箇条書き、表、コードブロック、画像などを表示します。画像は `public/images/` に置き、`/images/example.png` または `../public/images/example.png` で参照してください。HTML・Vueコンポーネントは実行せずテキストとして表示し、Mermaidなどの独自構文はコードとして確認します。このビューアはローカルの仕様確認用で、通常のスライドビルドやGitHub Pagesには含まれません。
 
 ## GitHub Pages へのデプロイ
 

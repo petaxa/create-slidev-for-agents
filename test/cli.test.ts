@@ -111,7 +111,7 @@ test("scaffold creates a blank Vite+ deck without installing", async () => {
     expect(generatedReadme).toContain(installCommand);
     expect(generatedReadme).toMatch(/vp run dev/);
     expect(generatedReadme).toContain("vp run specs");
-    expect(generatedPackage.devDependencies["markdown-it"]).toBe("14.3.1");
+    expect(generatedPackage.devDependencies["@ox-content/napi"]).toBe("3.2.1");
     expect(generatedViteConfig).toContain("vp dev --config specs-review/vite.config.ts");
     expect(
       await readFile(path.join(result.targetDirectory, "specs-review/index.html"), "utf8"),

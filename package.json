@@ -26,9 +26,8 @@
     "access": "public"
   },
   "devDependencies": {
-    "@types/markdown-it": "14.1.2",
+    "@ox-content/napi": "3.2.1",
     "@types/node": "^24.0.0",
-    "markdown-it": "14.3.1",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   },
