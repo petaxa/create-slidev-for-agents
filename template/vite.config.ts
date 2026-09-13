@@ -3,6 +3,10 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   run: {
     tasks: {
+      specs: {
+        command: "vp dev --config specs-review/vite.config.ts",
+        cache: false,
+      },
       dev: {
         command: "slidev",
         cache: false,

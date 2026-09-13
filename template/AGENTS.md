@@ -7,6 +7,7 @@
 1. ユーザーが `specs/_prot.md` に発表全体のプロットを書く
 2. LLM が `DESIGN.md`、`specs/README.md`、`specs/_prot.md` を読み、各ページの `specs/NN_name.md` を作る
 3. LLM は仕様の一覧と判断が必要な点を示し、ユーザーによる仕様確認を待つ
+   - `vp run specs` で仕様をブラウザ表示でき、左右キーで前後のページへ移動できることを案内する
 4. ユーザーが仕様を承認した後、LLM が `pages/NN_name.vue` を作り、`slides.md` に発表順で登録する
 5. LLM はビルドと表示を確認し、ユーザーによる実装確認を待つ
 6. ユーザーが `specs/_feedback.md` にフィードバックを書く
