@@ -11,6 +11,7 @@ const packageManagers = new Set(["npm", "pnpm", "yarn", "bun"]);
 
 export interface CliOptions {
   directory?: string;
+  dryRun: boolean;
   help: boolean;
   install: boolean;
   title?: string;
@@ -24,6 +25,7 @@ export interface Logger {
 export interface ScaffoldOptions {
   cwd?: string;
   directory: string;
+  dryRun?: boolean;
   install?: boolean;
   logger?: Logger;
   title?: string;
@@ -47,6 +49,7 @@ Usage:
 Options:
   --title <title>       Set the presentation title
   --install             Install dependencies after creating files
+  --dry-run             Preview without creating files or installing dependencies
   -h, --help            Show this help
   -v, --version         Show the package version
 `;
@@ -54,6 +57,7 @@ Options:
 export function parseArgs(argv: string[]): CliOptions {
   const result: CliOptions = {
     directory: undefined,
+    dryRun: false,
     help: false,
     install: false,
     title: undefined,
@@ -89,6 +93,11 @@ export function parseArgs(argv: string[]): CliOptions {
 
     if (argument === "--install") {
       result.install = true;
+      continue;
+    }
+
+    if (argument === "--dry-run") {
+      result.dryRun = true;
       continue;
     }
 
@@ -165,9 +174,8 @@ async function pathExists(filePath: string): Promise<boolean> {
   }
 }
 
-async function ensureWritableTarget(targetDirectory: string): Promise<void> {
+async function validateTarget(targetDirectory: string): Promise<void> {
   if (!(await pathExists(targetDirectory))) {
-    await mkdir(targetDirectory, { recursive: true });
     return;
   }
 
@@ -254,6 +262,7 @@ function quotePathForDisplay(value: string): string {
 export async function scaffold({
   cwd = process.cwd(),
   directory,
+  dryRun = false,
   install = false,
   logger = console,
   title,
@@ -270,29 +279,38 @@ export async function scaffold({
   const installCommand = packageManager === "yarn" ? "yarn" : `${packageManager} install`;
   const runCommand = (task: string) => `vp run ${task}`;
 
-  await ensureWritableTarget(targetDirectory);
-  await cp(templateDirectory, targetDirectory, { recursive: true });
-  await rename(
-    path.join(targetDirectory, "dot-gitignore"),
-    path.join(targetDirectory, ".gitignore"),
-  );
-  await replacePlaceholders(targetDirectory, {
-    "{{DECK_TITLE}}": deckTitle,
-    __DECK_TITLE_HTML__: escapeHtml(deckTitle),
-    __DECK_TITLE_UPPER__: escapeJavaScriptString(deckTitle.toUpperCase()),
-    __DECK_TITLE_YAML__: JSON.stringify(deckTitle),
-    __BUILD_COMMAND__: runCommand("build"),
-    __DEV_COMMAND__: runCommand("dev"),
-    __EXPORT_COMMAND__: runCommand("export"),
-    __INSTALL_COMMAND__: installCommand,
-    __PROJECT_NAME__: projectName,
-  });
+  await validateTarget(targetDirectory);
+  if (!dryRun) {
+    await mkdir(targetDirectory, { recursive: true });
+    await cp(templateDirectory, targetDirectory, { recursive: true });
+    await rename(
+      path.join(targetDirectory, "dot-gitignore"),
+      path.join(targetDirectory, ".gitignore"),
+    );
+    await replacePlaceholders(targetDirectory, {
+      "{{DECK_TITLE}}": deckTitle,
+      __DECK_TITLE_HTML__: escapeHtml(deckTitle),
+      __DECK_TITLE_UPPER__: escapeJavaScriptString(deckTitle.toUpperCase()),
+      __DECK_TITLE_YAML__: JSON.stringify(deckTitle),
+      __BUILD_COMMAND__: runCommand("build"),
+      __DEV_COMMAND__: runCommand("dev"),
+      __EXPORT_COMMAND__: runCommand("export"),
+      __INSTALL_COMMAND__: installCommand,
+      __PROJECT_NAME__: projectName,
+    });
+  }
 
-  logger.log(`\nCreated ${deckTitle} in ${targetDirectory}`);
+  logger.log(
+    `\n${dryRun ? "[dry-run] Would create" : "Created"} ${deckTitle} in ${targetDirectory}`,
+  );
 
   if (install) {
-    logger.log(`\nInstalling dependencies with ${packageManager}...\n`);
-    await runInstall(packageManager, targetDirectory);
+    if (dryRun) {
+      logger.log(`\n[dry-run] Would install dependencies with ${packageManager}.`);
+    } else {
+      logger.log(`\nInstalling dependencies with ${packageManager}...\n`);
+      await runInstall(packageManager, targetDirectory);
+    }
   }
 
   const displayTarget = relativeTarget(cwd, targetDirectory);
@@ -301,7 +319,7 @@ export async function scaffold({
 
   logger.log("\nNext steps:");
   if (cdCommand) logger.log(`  ${cdCommand}`);
-  if (!install) logger.log(`  ${installCommand}`);
+  if (!install || dryRun) logger.log(`  ${installCommand}`);
   logger.log(`  ${devCommand}\n`);
 
   return { deckTitle, packageManager, projectName, targetDirectory };
@@ -341,6 +359,7 @@ export async function runCli(argv: string[]): Promise<void> {
   const directory = options.directory ?? (await promptForDirectory());
   await scaffold({
     directory,
+    dryRun: options.dryRun,
     install: options.install,
     title: options.title,
   });

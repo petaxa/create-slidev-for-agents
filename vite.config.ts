@@ -1,6 +1,18 @@
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  run: {
+    tasks: {
+      "playground:cli": {
+        command: "vp pack && node ./dist/create-slidev.mjs --dry-run",
+        cache: false,
+      },
+      "playground:specs": {
+        command: "vp dev --config playground/vite.config.ts",
+        cache: false,
+      },
+    },
+  },
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],

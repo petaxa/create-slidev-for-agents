@@ -63,6 +63,7 @@ my-talk/
 │   ├── index.html
 │   ├── main.js
 │   ├── documents.js
+│   ├── config.ts
 │   ├── model.ts
 │   ├── render.ts
 │   ├── style.css
@@ -96,6 +97,7 @@ my-talk/
 ```text
 --title <title>   発表タイトル
 --install         生成後に依存関係をインストールする
+--dry-run         ファイル作成・依存関係のインストールをせず実行内容を確認する
 -h, --help        ヘルプ
 -v, --version     バージョン
 ```
@@ -103,6 +105,30 @@ my-talk/
 既存ファイルの誤上書きを避けるため、生成先が空でない場合は停止します。
 
 ## 開発
+
+### 手元で試す（Playground）
+
+最初に `vp install` を実行します。以下はこのリポジトリのルートから使える開発用コマンドです。
+
+```bash
+vp run playground:cli
+vp run playground:specs
+```
+
+`playground:cli` は最新のCLIをビルドしてdry-runで実行します。ターミナルでは生成先の入力を試せます。生成先の検証やタイトル・次の手順の表示は通常と同じですが、デッキや依存関係は作成しません。ビルド結果の `dist/` は更新されます。引数付きの操作も試せます。
+
+```bash
+vp run playground:cli demo-talk --title "サンプル発表" --install
+vp run playground:cli --help
+```
+
+`--install` を付けてもインストールは予告だけです。既存の空でないディレクトリを指定すると、通常のCLIと同じエラーになります。何度でも実行でき、生成されるファイルの内容は `template/` で確認できます。
+
+`playground:specs` はサンプル3ページ入りの仕様ビューアをブラウザで開きます（既定: `http://127.0.0.1:3031`）。左右キー・一覧・ボタンでの移動、表・コード・画像・長文の表示を試せます。`playground/specs/*.md` の編集・追加・削除は自動反映されます。
+
+画面の実装は `template/specs-review/` を直接使うため、変更のたびにデッキを生成し直す必要はありません。画像サンプルは `playground/public/` に置きます。両コマンドは `Ctrl+C` で終了できます。`playground/` は生成デッキにもnpmパッケージにも含まれません。
+
+### 検証とパッケージ作成
 
 ```bash
 vp install
