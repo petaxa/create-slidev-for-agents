@@ -6,12 +6,18 @@
     <title>仕様レビュー</title>
   </head>
   <body>
-    <header>
-      <div><strong>仕様レビュー</strong><span>スライド実装前に、内容と構成を確認</span></div>
-      <p>← → 前後の仕様へ <span>・ Home 最初 / End 最後</span></p>
+    <header class="masthead">
+      <div class="masthead__title">
+        <strong>仕様レビュー</strong>
+        <span>スライド実装前に、内容と構成を確認</span>
+      </div>
+      <p class="masthead__shortcuts">← → 前後の仕様へ <span>・ Home 最初 / End 最後</span></p>
     </header>
     <div class="workspace">
-      <nav aria-label="ページ仕様"><ol id="spec-list"></ol></nav>
+      <nav aria-label="ページ仕様">
+        <div class="sidebar-heading"><span>ページ仕様</span><span>specs/</span></div>
+        <ol id="spec-list"></ol>
+      </nav>
       <main id="reader" tabindex="0" aria-label="仕様の本文">
         <div class="page-meta">
           <span id="filename"></span><span id="position" role="status"></span>
@@ -21,6 +27,7 @@
     </div>
     <footer>
       <span>ファイルの保存・追加・削除を自動反映</span>
+      <span class="footer-rule" aria-hidden="true"></span>
       <div>
         <button id="previous" type="button">← 前へ</button
         ><button id="next" type="button">次へ →</button>
