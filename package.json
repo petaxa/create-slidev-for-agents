@@ -1,7 +1,7 @@
 {
   "name": "create-slidev-for-agents",
   "version": "0.0.2",
-  "description": "Scaffold a personal Slidev deck with an editorial paper-and-ink theme.",
+  "description": "Scaffold a Slidev deck with an optional GitHub design guide.",
   "keywords": [
     "create",
     "presentation",

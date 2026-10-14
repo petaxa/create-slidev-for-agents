@@ -22,6 +22,15 @@ Vite+ を使わない場合は、npmのcreateコマンドからも実行でき�
 npm create slidev-for-agents@latest my-talk -- --title "発表タイトル"
 ```
 
+対話形式では、共通のスライドガイドだけを使うか、GitHub のデザイン用リポジトリを取り込むかを選べます。後者を選んだらリポジトリと、その中のディレクトリを入力します。ディレクトリを空欄にするとルートを使います。GitHub のフォルダ URL をそのまま入力することもできます。選んだディレクトリに `DESIGN.md` が必要です。
+
+例えば [awesome-design-md-jp の 10x デザイン](https://github.com/kzhrknt/awesome-design-md-jp/tree/main/design-md/10x)を使う場合は、次のどちらかを指定します。
+
+```bash
+vp create slidev-for-agents -- my-talk --design-repo kzhrknt/awesome-design-md-jp --design-path design-md/10x
+vp create slidev-for-agents -- my-talk --design-repo https://github.com/kzhrknt/awesome-design-md-jp/tree/main/design-md/10x
+```
+
 ジェネレーター自身は、依存関係を自動インストールしません。`vp create` から実行した場合は、生成後のVite+処理が依存関係をインストールします。CLIを直接実行した場合は、最後に表示されるインストールコマンドを実行してください。この案内と、明示的に `--install` を指定した場合だけ、CLIを起動したパッケージマネージャーを自動検出します。利用者がパッケージマネージャーを指定するオプションはありません。
 
 ## 現在のローカル実行
@@ -74,7 +83,9 @@ my-talk/
 │   ├── patterns.css
 │   └── tokens.css
 ├── deck.config.ts
-├── DESIGN.md
+├── DESIGN-dot-md/
+│   ├── DESIGN.slide.md
+│   └── DESIGN.theme.md  （デザイン用リポジトリを指定した場合）
 ├── slides.md
 ├── style.css
 └── vite.config.ts
@@ -96,6 +107,8 @@ my-talk/
 
 ```text
 --title <title>   発表タイトル
+--design-repo <repo>  GitHub のデザイン用リポジトリ（owner/repo または URL）
+--design-path <path>  リポジトリ内のデザインディレクトリ
 --install         生成後に依存関係をインストールする
 --dry-run         ファイル作成・依存関係のインストールをせず実行内容を確認する
 -h, --help        ヘルプ
@@ -144,4 +157,4 @@ npm 公開は後続タスクで行います。公開前に、パッケージ名�
 
 ## デザイン
 
-色やフォントだけでなく、情報量、余白、レイアウトの選び方まで [template/DESIGN.md](./template/DESIGN.md) にまとめています。テンプレートの一部として生成先へコピーされます。
+プレゼン共通の要件は [template/DESIGN-dot-md/DESIGN.slide.md](./template/DESIGN-dot-md/DESIGN.slide.md) にまとめ、生成先へコピーします。GitHub のデザイン用リポジトリを指定すると、選んだディレクトリの `DESIGN.md` を `DESIGN-dot-md/DESIGN.theme.md` としてコピーし、同じディレクトリ内のほかのファイルとフォルダも `DESIGN-dot-md/` にコピーします（Git の管理情報を除く）。指定しなければテーマガイドは作成しません。
