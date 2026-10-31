@@ -1,15 +1,37 @@
 import { spawn } from "node:child_process";
 import { constants as fsConstants } from "node:fs";
-import { access, cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import {
+  access,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createInterface } from "node:readline/promises";
+import { createInterface, type Interface } from "node:readline/promises";
+
+import {
+  cloneGitHubRepository,
+  copyDesignRepository,
+  designRepositoryEntries,
+  parseGitHubDesignSource,
+  resolveGitHubDesignSource,
+} from "./design";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
 const templateDirectory = path.join(packageRoot, "template");
 const packageManagers = new Set(["npm", "pnpm", "yarn", "bun"]);
 
 export interface CliOptions {
+  designPath?: string;
+  designRepository?: string;
   directory?: string;
   dryRun: boolean;
   help: boolean;
@@ -24,11 +46,15 @@ export interface Logger {
 
 export interface ScaffoldOptions {
   cwd?: string;
+  designPath?: string;
+  designRepository?: string;
   directory: string;
   dryRun?: boolean;
   install?: boolean;
   logger?: Logger;
   title?: string;
+  cloneDesignRepository?: typeof cloneGitHubRepository;
+  resolveDesignSource?: typeof resolveGitHubDesignSource;
 }
 
 export interface ScaffoldResult {
@@ -39,7 +65,7 @@ export interface ScaffoldResult {
 }
 
 export const helpText = `
-Create a Slidev deck with the petaxa editorial theme.
+Create a Slidev deck with an optional GitHub design guide.
 
 Usage:
   vp create slidev-for-agents -- [directory] [options]
@@ -48,6 +74,8 @@ Usage:
 
 Options:
   --title <title>       Set the presentation title
+  --design-repo <url>   GitHub file, folder, or repository URL
+  --design-path <path>  Directory within the design repository
   --install             Install dependencies after creating files
   --dry-run             Preview without creating files or installing dependencies
   -h, --help            Show this help
@@ -56,6 +84,8 @@ Options:
 
 export function parseArgs(argv: string[]): CliOptions {
   const result: CliOptions = {
+    designPath: undefined,
+    designRepository: undefined,
     directory: undefined,
     dryRun: false,
     help: false,
@@ -101,18 +131,34 @@ export function parseArgs(argv: string[]): CliOptions {
       continue;
     }
 
-    if (argument === "--title") {
+    if (argument === "--title" || argument === "--design-repo" || argument === "--design-path") {
       const value = argv[index + 1];
       if (!value || value.startsWith("-")) {
         throw new Error(`${argument} requires a value.`);
       }
-      result.title = value;
+      if (argument === "--title") result.title = value;
+      else if (argument === "--design-repo") result.designRepository = value;
+      else result.designPath = value;
       index += 1;
       continue;
     }
 
     if (argument.startsWith("--title=")) {
       result.title = argument.slice("--title=".length);
+      continue;
+    }
+
+    if (argument.startsWith("--design-repo=")) {
+      const value = argument.slice("--design-repo=".length);
+      if (!value) throw new Error("--design-repo requires a value.");
+      result.designRepository = value;
+      continue;
+    }
+
+    if (argument.startsWith("--design-path=")) {
+      const value = argument.slice("--design-path=".length);
+      if (!value) throw new Error("--design-path requires a value.");
+      result.designPath = value;
       continue;
     }
 
@@ -261,11 +307,15 @@ function quotePathForDisplay(value: string): string {
 
 export async function scaffold({
   cwd = process.cwd(),
+  designPath,
+  designRepository,
   directory,
   dryRun = false,
   install = false,
   logger = console,
   title,
+  cloneDesignRepository = cloneGitHubRepository,
+  resolveDesignSource = resolveGitHubDesignSource,
 }: ScaffoldOptions): Promise<ScaffoldResult> {
   if (!directory) {
     throw new Error("A target directory is required.");
@@ -278,31 +328,77 @@ export async function scaffold({
   const deckTitle = (title?.trim() || titleFromDirectory(directoryName)).replace(/\s+/g, " ");
   const installCommand = packageManager === "yarn" ? "yarn" : `${packageManager} install`;
   const runCommand = (task: string) => `vp run ${task}`;
+  if (designPath && !designRepository) {
+    throw new Error("--design-path requires --design-repo.");
+  }
+  let designSource = designRepository
+    ? parseGitHubDesignSource(designRepository, designPath)
+    : undefined;
 
   await validateTarget(targetDirectory);
-  if (!dryRun) {
-    await mkdir(targetDirectory, { recursive: true });
-    await cp(templateDirectory, targetDirectory, { recursive: true });
-    await rename(
-      path.join(targetDirectory, "dot-gitignore"),
-      path.join(targetDirectory, ".gitignore"),
-    );
-    await replacePlaceholders(targetDirectory, {
-      "{{DECK_TITLE}}": deckTitle,
-      __DECK_TITLE_HTML__: escapeHtml(deckTitle),
-      __DECK_TITLE_UPPER__: escapeJavaScriptString(deckTitle.toUpperCase()),
-      __DECK_TITLE_YAML__: JSON.stringify(deckTitle),
-      __BUILD_COMMAND__: runCommand("build"),
-      __DEV_COMMAND__: runCommand("dev"),
-      __EXPORT_COMMAND__: runCommand("export"),
-      __INSTALL_COMMAND__: installCommand,
-      __PROJECT_NAME__: projectName,
-    });
+  let temporaryDesignDirectory: string | undefined;
+  try {
+    let designEntries: string[] | undefined;
+    if (!dryRun && designSource) {
+      designSource = await resolveDesignSource(designSource);
+      temporaryDesignDirectory = await mkdtemp(path.join(os.tmpdir(), "slidev-design-"));
+      const checkoutDirectory = path.join(temporaryDesignDirectory, "repository");
+      await cloneDesignRepository(designSource.repositoryUrl, checkoutDirectory, designSource.ref);
+      designEntries = await designRepositoryEntries(
+        path.join(checkoutDirectory, designSource.directory),
+        designSource.kind,
+        checkoutDirectory,
+      );
+    }
+
+    if (!dryRun) {
+      await mkdir(targetDirectory, { recursive: true });
+      await cp(templateDirectory, targetDirectory, { recursive: true });
+      await rename(
+        path.join(targetDirectory, "dot-gitignore"),
+        path.join(targetDirectory, ".gitignore"),
+      );
+      await replacePlaceholders(targetDirectory, {
+        "{{DECK_TITLE}}": deckTitle,
+        __DECK_TITLE_HTML__: escapeHtml(deckTitle),
+        __DECK_TITLE_UPPER__: escapeJavaScriptString(deckTitle.toUpperCase()),
+        __DECK_TITLE_YAML__: JSON.stringify(deckTitle),
+        __BUILD_COMMAND__: runCommand("build"),
+        __DEV_COMMAND__: runCommand("dev"),
+        __EXPORT_COMMAND__: runCommand("export"),
+        __INSTALL_COMMAND__: installCommand,
+        __PROJECT_NAME__: projectName,
+      });
+      if (temporaryDesignDirectory && designEntries && designSource) {
+        await mkdir(path.join(targetDirectory, "DESIGN-dot-md/theme"));
+        await copyDesignRepository(
+          path.join(
+            temporaryDesignDirectory,
+            "repository",
+            designSource.kind === "file"
+              ? path.dirname(designSource.directory)
+              : designSource.directory,
+          ),
+          path.join(targetDirectory, "DESIGN-dot-md/theme"),
+          designEntries,
+        );
+      }
+    }
+  } finally {
+    if (temporaryDesignDirectory) {
+      await rm(temporaryDesignDirectory, { force: true, recursive: true });
+    }
   }
 
   logger.log(
     `\n${dryRun ? "[dry-run] Would create" : "Created"} ${deckTitle} in ${targetDirectory}`,
   );
+  if (designSource) {
+    const sourceDescription = `${designSource.repositoryUrl}${designSource.directory ? ` (${designSource.directory})` : ""}`;
+    logger.log(
+      `${dryRun ? "[dry-run] Would copy" : "Copied"} design files from ${sourceDescription} to DESIGN-dot-md/theme/.`,
+    );
+  }
 
   if (install) {
     if (dryRun) {
@@ -332,15 +428,14 @@ async function readVersion(): Promise<string> {
   return packageJson.version;
 }
 
-async function promptForDirectory(): Promise<string> {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) {
-    return "my-slidev-deck";
-  }
-
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+async function promptForDirectory(prompt: Interface): Promise<string> {
   const answer = await prompt.question("Project directory (my-slidev-deck): ");
-  prompt.close();
   return answer.trim() || "my-slidev-deck";
+}
+
+async function promptForDesignRepository(prompt: Interface): Promise<string | undefined> {
+  const source = await prompt.question("GitHub design file or folder URL (leave blank to skip): ");
+  return source.trim() || undefined;
 }
 
 export async function runCli(argv: string[]): Promise<void> {
@@ -356,11 +451,26 @@ export async function runCli(argv: string[]): Promise<void> {
     return;
   }
 
-  const directory = options.directory ?? (await promptForDirectory());
-  await scaffold({
-    directory,
-    dryRun: options.dryRun,
-    install: options.install,
-    title: options.title,
-  });
+  const prompt =
+    process.stdin.isTTY && process.stdout.isTTY
+      ? createInterface({ input: process.stdin, output: process.stdout })
+      : undefined;
+  try {
+    const directory =
+      options.directory ?? (prompt ? await promptForDirectory(prompt) : "my-slidev-deck");
+    const promptedDesignRepository =
+      !options.designRepository && prompt ? await promptForDesignRepository(prompt) : undefined;
+    const designRepository = options.designRepository ?? promptedDesignRepository;
+    const designPath = options.designPath;
+    await scaffold({
+      designPath,
+      designRepository,
+      directory,
+      dryRun: options.dryRun,
+      install: options.install,
+      title: options.title,
+    });
+  } finally {
+    prompt?.close();
+  }
 }
