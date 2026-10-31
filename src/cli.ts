@@ -22,6 +22,7 @@ import {
   copyDesignRepository,
   designRepositoryEntries,
   parseGitHubDesignSource,
+  resolveGitHubDesignSource,
 } from "./design";
 
 const packageRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -53,6 +54,7 @@ export interface ScaffoldOptions {
   logger?: Logger;
   title?: string;
   cloneDesignRepository?: typeof cloneGitHubRepository;
+  resolveDesignSource?: typeof resolveGitHubDesignSource;
 }
 
 export interface ScaffoldResult {
@@ -72,7 +74,7 @@ Usage:
 
 Options:
   --title <title>       Set the presentation title
-  --design-repo <repo>  GitHub repository or directory URL
+  --design-repo <url>   GitHub file, folder, or repository URL
   --design-path <path>  Directory within the design repository
   --install             Install dependencies after creating files
   --dry-run             Preview without creating files or installing dependencies
@@ -313,6 +315,7 @@ export async function scaffold({
   logger = console,
   title,
   cloneDesignRepository = cloneGitHubRepository,
+  resolveDesignSource = resolveGitHubDesignSource,
 }: ScaffoldOptions): Promise<ScaffoldResult> {
   if (!directory) {
     throw new Error("A target directory is required.");
@@ -328,7 +331,7 @@ export async function scaffold({
   if (designPath && !designRepository) {
     throw new Error("--design-path requires --design-repo.");
   }
-  const designSource = designRepository
+  let designSource = designRepository
     ? parseGitHubDesignSource(designRepository, designPath)
     : undefined;
 
@@ -337,11 +340,14 @@ export async function scaffold({
   try {
     let designEntries: string[] | undefined;
     if (!dryRun && designSource) {
+      designSource = await resolveDesignSource(designSource);
       temporaryDesignDirectory = await mkdtemp(path.join(os.tmpdir(), "slidev-design-"));
       const checkoutDirectory = path.join(temporaryDesignDirectory, "repository");
       await cloneDesignRepository(designSource.repositoryUrl, checkoutDirectory, designSource.ref);
       designEntries = await designRepositoryEntries(
         path.join(checkoutDirectory, designSource.directory),
+        designSource.kind,
+        checkoutDirectory,
       );
     }
 
@@ -364,9 +370,16 @@ export async function scaffold({
         __PROJECT_NAME__: projectName,
       });
       if (temporaryDesignDirectory && designEntries && designSource) {
+        await mkdir(path.join(targetDirectory, "DESIGN-dot-md/theme"));
         await copyDesignRepository(
-          path.join(temporaryDesignDirectory, "repository", designSource.directory),
-          path.join(targetDirectory, "DESIGN-dot-md"),
+          path.join(
+            temporaryDesignDirectory,
+            "repository",
+            designSource.kind === "file"
+              ? path.dirname(designSource.directory)
+              : designSource.directory,
+          ),
+          path.join(targetDirectory, "DESIGN-dot-md/theme"),
           designEntries,
         );
       }
@@ -383,7 +396,7 @@ export async function scaffold({
   if (designSource) {
     const sourceDescription = `${designSource.repositoryUrl}${designSource.directory ? ` (${designSource.directory})` : ""}`;
     logger.log(
-      `${dryRun ? "[dry-run] Would copy" : "Copied"} design files from ${sourceDescription} to DESIGN-dot-md/.`,
+      `${dryRun ? "[dry-run] Would copy" : "Copied"} design files from ${sourceDescription} to DESIGN-dot-md/theme/.`,
     );
   }
 
@@ -421,24 +434,8 @@ async function promptForDirectory(prompt: Interface): Promise<string> {
 }
 
 async function promptForDesignRepository(prompt: Interface): Promise<string | undefined> {
-  const selection = await prompt.question(
-    "Design guide: [1] slide guide only, [2] GitHub repository (1): ",
-  );
-  if (!selection.trim() || selection.trim() === "1") return undefined;
-  if (selection.trim() !== "2") {
-    throw new Error("Choose 1 or 2 for the design guide.");
-  }
-
-  const repository = await prompt.question("GitHub repository or directory URL: ");
-  if (!repository.trim()) {
-    throw new Error("A GitHub repository is required for option 2.");
-  }
-  return repository.trim();
-}
-
-async function promptForDesignPath(prompt: Interface): Promise<string | undefined> {
-  const directory = await prompt.question("Directory within repository (root): ");
-  return directory.trim() || undefined;
+  const source = await prompt.question("GitHub design file or folder URL (leave blank to skip): ");
+  return source.trim() || undefined;
 }
 
 export async function runCli(argv: string[]): Promise<void> {
@@ -464,11 +461,7 @@ export async function runCli(argv: string[]): Promise<void> {
     const promptedDesignRepository =
       !options.designRepository && prompt ? await promptForDesignRepository(prompt) : undefined;
     const designRepository = options.designRepository ?? promptedDesignRepository;
-    const designPath =
-      options.designPath ??
-      (prompt && promptedDesignRepository && !promptedDesignRepository.includes("/tree/")
-        ? await promptForDesignPath(prompt)
-        : undefined);
+    const designPath = options.designPath;
     await scaffold({
       designPath,
       designRepository,

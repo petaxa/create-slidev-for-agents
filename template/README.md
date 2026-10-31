@@ -12,7 +12,7 @@ __DEV_COMMAND__
 `slides.md` がスライド順を管理し、各ページの実装は `pages/` に置きます。
 ページごとの意図は、同名の `specs/*.md` に記録します。共通の見た目は `layouts/`、`components/`、`styles/` に分かれています。
 
-デザインを変更・拡張するときは、プレゼン共通の要件をまとめた [DESIGN.slide.md](./DESIGN-dot-md/DESIGN.slide.md) を確認してください。生成時に GitHub のデザイン用リポジトリを指定した場合は、`DESIGN-dot-md/DESIGN.theme.md` と同じフォルダ内の資料も確認してください。
+デザインを変更・拡張するときは、プレゼン共通の要件をまとめた [DESIGN.slide.md](./DESIGN-dot-md/DESIGN.slide.md) を確認してください。生成時に GitHub のファイル・フォルダを指定した場合は、`DESIGN-dot-md/theme/` 内の資料も確認してください。
 
 LLM にスライドを書かせる場合は、[AGENTS.md](./AGENTS.md) の指示に従います。最初に `specs/_prot.md` を書き、LLM が作成した `specs/*.md` を確認してからページ実装へ進んでください。実装確認後は `specs/_feedback.md` に修正内容を書き、仕様とページを一緒に更新させます。
 

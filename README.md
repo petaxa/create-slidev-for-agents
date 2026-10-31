@@ -22,14 +22,19 @@ Vite+ を使わない場合は、npmのcreateコマンドからも実行でき�
 npm create slidev-for-agents@latest my-talk -- --title "発表タイトル"
 ```
 
-対話形式では、共通のスライドガイドだけを使うか、GitHub のデザイン用リポジトリを取り込むかを選べます。後者を選んだらリポジトリと、その中のディレクトリを入力します。ディレクトリを空欄にするとルートを使います。GitHub のフォルダ URL をそのまま入力することもできます。選んだディレクトリに `DESIGN.md` が必要です。
-
-例えば [awesome-design-md-jp の 10x デザイン](https://github.com/kzhrknt/awesome-design-md-jp/tree/main/design-md/10x)を使う場合は、次のどちらかを指定します。
+デザイン資料の取り込みは任意です。対話形式では GitHub のファイル・フォルダ URL を入力し、不要なら空欄のまま進みます。オプションで指定することもできます。
 
 ```bash
-vp create slidev-for-agents -- my-talk --design-repo kzhrknt/awesome-design-md-jp --design-path design-md/10x
+# ファイルを1つだけ取り込む
+vp create slidev-for-agents -- my-talk --design-repo https://github.com/kzhrknt/awesome-design-md-jp/blob/main/design-md/10x/DESIGN.md
+
+# フォルダ直下のファイル・フォルダを再帰的に取り込む
 vp create slidev-for-agents -- my-talk --design-repo https://github.com/kzhrknt/awesome-design-md-jp/tree/main/design-md/10x
 ```
+
+コピー先は `DESIGN-dot-md/theme/` です。元のファイル名とフォルダ構造を維持し、フォルダ自体をもう一段作ることはありません。ファイル指定では、画像などの関連ファイルは自動取得しません。フォルダ指定では `DESIGN.md` の有無を問いません。指定しなければ `theme/` は作成しません。
+
+取得には Git が必要です。ブランチ・タグ（`/` を含む名前にも対応）と完全なコミット SHA の URL を利用できます。Git の管理情報はコピーせず、シンボリックリンクが含まれる場合は生成前にエラーにします。従来の `owner/repo` と `--design-path` によるフォルダ指定も利用できます。
 
 ジェネレーター自身は、依存関係を自動インストールしません。`vp create` から実行した場合は、生成後のVite+処理が依存関係をインストールします。CLIを直接実行した場合は、最後に表示されるインストールコマンドを実行してください。この案内と、明示的に `--install` を指定した場合だけ、CLIを起動したパッケージマネージャーを自動検出します。利用者がパッケージマネージャーを指定するオプションはありません。
 
@@ -85,7 +90,7 @@ my-talk/
 ├── deck.config.ts
 ├── DESIGN-dot-md/
 │   ├── DESIGN.slide.md
-│   └── DESIGN.theme.md  （デザイン用リポジトリを指定した場合）
+│   └── theme/  （GitHub の資料を指定した場合）
 ├── slides.md
 ├── style.css
 └── vite.config.ts
@@ -107,7 +112,7 @@ my-talk/
 
 ```text
 --title <title>   発表タイトル
---design-repo <repo>  GitHub のデザイン用リポジトリ（owner/repo または URL）
+--design-repo <url>   GitHub のファイル・フォルダ URL（owner/repo も可）
 --design-path <path>  リポジトリ内のデザインディレクトリ
 --install         生成後に依存関係をインストールする
 --dry-run         ファイル作成・依存関係のインストールをせず実行内容を確認する
@@ -157,4 +162,4 @@ npm 公開は後続タスクで行います。公開前に、パッケージ名�
 
 ## デザイン
 
-プレゼン共通の要件は [template/DESIGN-dot-md/DESIGN.slide.md](./template/DESIGN-dot-md/DESIGN.slide.md) にまとめ、生成先へコピーします。GitHub のデザイン用リポジトリを指定すると、選んだディレクトリの `DESIGN.md` を `DESIGN-dot-md/DESIGN.theme.md` としてコピーし、同じディレクトリ内のほかのファイルとフォルダも `DESIGN-dot-md/` にコピーします（Git の管理情報を除く）。指定しなければテーマガイドは作成しません。
+プレゼン共通の要件は [template/DESIGN-dot-md/DESIGN.slide.md](./template/DESIGN-dot-md/DESIGN.slide.md) にまとめ、生成先へコピーします。テーマ資料は任意で `DESIGN-dot-md/theme/` に取り込みます。これは参考資料のコピーであり、CSS やレイアウトへのテーマ適用は自動で行いません。

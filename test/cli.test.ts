@@ -45,10 +45,12 @@ test("GitHub design sources accept repositories and directory URLs", () => {
   expect(parseGitHubDesignSource("owner/design")).toEqual({
     repositoryUrl: "https://github.com/owner/design.git",
     directory: "",
+    kind: "directory",
   });
   expect(parseGitHubDesignSource("https://github.com/owner/design.git/")).toEqual({
     repositoryUrl: "https://github.com/owner/design.git",
     directory: "",
+    kind: "directory",
   });
   expect(
     parseGitHubDesignSource("https://github.com/owner/design/tree/main/design-md/10x"),
@@ -56,6 +58,7 @@ test("GitHub design sources accept repositories and directory URLs", () => {
     repositoryUrl: "https://github.com/owner/design.git",
     directory: "design-md/10x",
     ref: "main",
+    kind: "directory",
   });
   expect(parseGitHubDesignSource("owner/design", "design-md/10x").directory).toBe("design-md/10x");
   expect(() => parseGitHubDesignSource("https://github.com.evil.test/owner/design")).toThrow();
@@ -209,22 +212,19 @@ test("scaffold copies a GitHub design repository into DESIGN-dot-md", async () =
       designRepository: "owner/design",
       directory: "deck",
       logger: { log: (message) => logs.push(message) },
+      resolveDesignSource: async (source) => source,
       cloneDesignRepository: async (url, destination) => {
         expect(url).toBe("https://github.com/owner/design.git");
         await cp(source, destination, { recursive: true });
       },
     });
 
-    const designDirectory = path.join(result.targetDirectory, "DESIGN-dot-md");
-    expect(await readFile(path.join(designDirectory, "DESIGN.theme.md"), "utf8")).toBe(
+    const designDirectory = path.join(result.targetDirectory, "DESIGN-dot-md/theme");
+    expect(await readFile(path.join(designDirectory, "DESIGN.md"), "utf8")).toBe(
       "# Custom theme\n",
     );
     expect(await readFile(path.join(designDirectory, "images/sample.svg"), "utf8")).toBe("<svg />");
-    expect(await readdir(designDirectory)).toEqual([
-      "DESIGN.slide.md",
-      "DESIGN.theme.md",
-      "images",
-    ]);
+    expect(await readdir(designDirectory)).toEqual(["DESIGN.md", "images"]);
     expect(logs.join("\n")).toContain("Copied design files from");
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });
@@ -246,6 +246,7 @@ test("scaffold copies only the selected design directory", async () => {
       designRepository: "https://github.com/owner/design/tree/main/design-md/10x",
       directory: "deck",
       logger: { log: () => {} },
+      resolveDesignSource: async (source) => source,
       cloneDesignRepository: async (url, destination, ref) => {
         expect(url).toBe("https://github.com/owner/design.git");
         expect(ref).toBe("main");
@@ -253,18 +254,12 @@ test("scaffold copies only the selected design directory", async () => {
       },
     });
 
-    const designDirectory = path.join(result.targetDirectory, "DESIGN-dot-md");
-    expect(await readFile(path.join(designDirectory, "DESIGN.theme.md"), "utf8")).toBe(
-      "# 10x design\n",
-    );
+    const designDirectory = path.join(result.targetDirectory, "DESIGN-dot-md/theme");
+    expect(await readFile(path.join(designDirectory, "DESIGN.md"), "utf8")).toBe("# 10x design\n");
     expect(await readFile(path.join(designDirectory, "preview.html"), "utf8")).toBe(
       "<html></html>",
     );
-    expect((await readdir(designDirectory)).sort()).toEqual([
-      "DESIGN.slide.md",
-      "DESIGN.theme.md",
-      "preview.html",
-    ]);
+    expect((await readdir(designDirectory)).sort()).toEqual(["DESIGN.md", "preview.html"]);
 
     const pathResult = await scaffold({
       cwd: temporaryRoot,
@@ -272,13 +267,14 @@ test("scaffold copies only the selected design directory", async () => {
       designPath: "design-md/10x",
       directory: "deck-by-path",
       logger: { log: () => {} },
+      resolveDesignSource: async (source) => source,
       cloneDesignRepository: async (_url, destination) => {
         await cp(source, destination, { recursive: true });
       },
     });
     expect(
       await readFile(
-        path.join(pathResult.targetDirectory, "DESIGN-dot-md/DESIGN.theme.md"),
+        path.join(pathResult.targetDirectory, "DESIGN-dot-md/theme/DESIGN.md"),
         "utf8",
       ),
     ).toBe("# 10x design\n");
@@ -287,20 +283,22 @@ test("scaffold copies only the selected design directory", async () => {
   }
 });
 
-test("missing DESIGN.md stops before creating a deck", async () => {
+test("missing selected folder stops before creating a deck", async () => {
   const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "slidev-design-test-"));
   try {
     await expect(
       scaffold({
         cwd: temporaryRoot,
         designRepository: "owner/design",
+        designPath: "missing",
         directory: "deck",
         logger: { log: () => {} },
+        resolveDesignSource: async (source) => source,
         cloneDesignRepository: async (_url, destination) => {
           await mkdir(destination);
         },
       }),
-    ).rejects.toThrow(/must contain DESIGN\.md/);
+    ).rejects.toThrow(/ENOENT/);
     expect(await readdir(temporaryRoot)).toEqual([]);
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });
@@ -384,5 +382,58 @@ test("scaffold refuses to overwrite a non-empty directory", async () => {
     ).rejects.toThrow(/not empty/);
   } finally {
     await rm(temporaryRoot, { force: true, recursive: true });
+  }
+});
+
+test("file URL copies only the selected file without renaming or rewriting it", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "slidev-file-test-"));
+  const content = Buffer.from("# Design\n![preview](./preview.png)\n__PROJECT_NAME__\n");
+  try {
+    const result = await scaffold({
+      cwd: root,
+      directory: "deck",
+      designRepository: "https://github.com/owner/design/blob/main/docs/Design.md",
+      resolveDesignSource: async (source) => source,
+      cloneDesignRepository: async (_url, destination) => {
+        await mkdir(path.join(destination, "docs"), { recursive: true });
+        await writeFile(path.join(destination, "docs/Design.md"), content);
+        await writeFile(path.join(destination, "docs/preview.png"), "sibling");
+      },
+      logger: { log: () => {} },
+    });
+    const theme = path.join(result.targetDirectory, "DESIGN-dot-md/theme");
+    expect(await readdir(theme)).toEqual(["Design.md"]);
+    expect(await readFile(path.join(theme, "Design.md"))).toEqual(content);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("folder URL copies nested assets even without DESIGN.md", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "slidev-folder-test-"));
+  try {
+    const result = await scaffold({
+      cwd: root,
+      directory: "deck",
+      designRepository: "https://github.com/owner/design/tree/main/docs",
+      resolveDesignSource: async (source) => source,
+      cloneDesignRepository: async (_url, destination) => {
+        await mkdir(path.join(destination, "docs/images/nested"), { recursive: true });
+        await writeFile(path.join(destination, "docs/guide.md"), "# Guide");
+        await writeFile(
+          path.join(destination, "docs/images/nested/preview.png"),
+          Buffer.from([0, 255, 1]),
+        );
+        await writeFile(path.join(destination, "outside.txt"), "not selected");
+      },
+      logger: { log: () => {} },
+    });
+    const theme = path.join(result.targetDirectory, "DESIGN-dot-md/theme");
+    expect(await readdir(theme)).toEqual(["guide.md", "images"]);
+    expect(await readFile(path.join(theme, "images/nested/preview.png"))).toEqual(
+      Buffer.from([0, 255, 1]),
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });

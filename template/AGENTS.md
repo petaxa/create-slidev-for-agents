@@ -5,7 +5,7 @@
 ## 作成ワークフロー
 
 1. ユーザーが `specs/_prot.md` に発表全体のプロットを書く
-2. LLM が `DESIGN-dot-md/DESIGN.slide.md`、`specs/README.md`、`specs/_prot.md` を読む。`DESIGN-dot-md/DESIGN.theme.md` があればそれも読み、各ページの `specs/NN_name.md` を作る
+2. LLM が `DESIGN-dot-md/DESIGN.slide.md`、`specs/README.md`、`specs/_prot.md` を読む。`DESIGN-dot-md/theme/` があれば、その中のデザイン資料も読み、各ページの `specs/NN_name.md` を作る
 3. LLM は仕様の一覧と判断が必要な点を示し、ユーザーによる仕様確認を待つ
    - `vp run specs` で仕様をブラウザ表示でき、左右キーで前後のページへ移動できることを案内する
 4. ユーザーが仕様を承認した後、LLM が `pages/NN_name.vue` を作り、`slides.md` に発表順で登録する
@@ -18,7 +18,7 @@
 
 ## 作業前に読むファイル
 
-- 仕様作成時: `DESIGN-dot-md/DESIGN.slide.md`、`specs/README.md`、`specs/_prot.md`。`DESIGN-dot-md/DESIGN.theme.md` があればそれも読む
+- 仕様作成時: `DESIGN-dot-md/DESIGN.slide.md`、`specs/README.md`、`specs/_prot.md`。`DESIGN-dot-md/theme/` があれば、その中のデザイン資料も読む
 - ページ実装時: 上記に加え、実装対象と同名の `specs/NN_name.md`
 - フィードバック反映時: 上記に加え、`specs/_feedback.md` と対象の `pages/NN_name.vue`
 
@@ -32,7 +32,7 @@
 
 ## 実装と検証
 
-`DESIGN-dot-md/DESIGN.theme.md` がある場合、共通の構造、コンポーネント、スタイルはその文書の指示に従って再利用します。ページ固有の都合でデザイントークンや共通レイアウトを複製しません。
+`DESIGN-dot-md/theme/` にデザイン資料がある場合は、その指示を参考にします。共通の構造、コンポーネント、スタイルは `layouts/`、`components/`、`styles/` を確認して再利用します。ページ固有の都合でデザイントークンや共通レイアウトを複製しません。
 
 実装後は次を行います。
 
