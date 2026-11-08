@@ -38,6 +38,7 @@ test("parseArgs reads scaffold options", () => {
     install: true,
     title: "Demo Deck",
     version: false,
+    yes: false,
   });
 });
 
