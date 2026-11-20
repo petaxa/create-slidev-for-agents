@@ -176,8 +176,28 @@ vp pm pack -- --dry-run
 
 テストは Vitest API を `vite-plus/test` から利用し、CLIのビルドは `vite.config.ts` の `pack` 設定を通じて tsdown が行います。`package.json` に独自の test/build script は置かず、Vite+ の組み込みコマンドを直接使います。
 
-npm 公開は後続タスクで行います。公開前に、パッケージ名・バージョン・README のコマンド例・npm provenance の方針を最終確認します。
+npmへの公開手順は「npmへのリリース」を参照してください。
 
 ## デザイン
 
 プレゼン共通の要件は [template/DESIGN-dot-md/DESIGN.slide.md](./template/DESIGN-dot-md/DESIGN.slide.md) にまとめ、生成先へコピーします。テーマ資料は任意で `DESIGN-dot-md/theme/` に取り込みます。これは参考資料のコピーであり、CSS やレイアウトへのテーマ適用は自動で行いません。
+
+## npmへのリリース
+
+変更をmainへマージし、ローカルのmainを最新にした後、リポジトリのルートで実行します。開発用のNode.jsは `.node-version` のバージョンを使用してください。
+
+```bash
+vp run release patch  # 0.0.2 → 0.0.3
+vp run release minor  # 0.0.2 → 0.1.0
+vp run release major  # 0.0.2 → 1.0.0
+```
+
+ローカルではGitとVite+を使用し、gh・GitHub APIトークン・npmログインは不要です。mainへの直接pushやタグの作成は行いません。releaseブランチへのpush権限と通常のGit認証が必要です。
+
+スクリプトは作業ツリーがクリーンで、mainがorigin/mainと一致し、同名のreleaseブランチが存在しないことを確認します。`vp check`、`vp test`、`vp pack` の成功後、`release/vX.Y.Z` ブランチを作成し、ルートのpackage.jsonのバージョンだけを更新・コミットしてpushします。テンプレートのバージョンは変更しません。実行後はreleaseブランチに留まります。pushに失敗した場合もブランチとコミットを残し、表示したコマンドで再送できます。
+
+pushを受けて「Create release PR」がGitHub標準のGITHUB_TOKENとREST APIでmain宛てのPRを作成します。同じブランチのPRがあれば再利用します。リリースPRも通常のレビュー・ブランチ保護の対象です。「CI」はreleaseブランチへのpushでも検証を行うため、botが作成したPRのイベントに依存しません。
+
+同じリポジトリの `release/vX.Y.Z` ブランチからmainへのPRがマージされた場合だけ「Publish npm package」の公開ジョブを実行します。公開対象はPRのマージコミットSHAに固定し、ブランチ名とpackage.jsonのバージョンが一致することを確認してから検証・ビルド・`npm stage publish`を行います。Squash mergeにも対応します。通常のPRマージや、マージせず閉じたPRでは公開ジョブをスキップします（PRを閉じたイベントのワークフロー履歴は残ります）。成功後、npmのStaged Packagesで内容を確認してApproveすると公開されます。失敗したCIはGitHub Actionsから再実行できます。
+
+初回のみ、GitHubのSettings → Actions → General → Workflow permissionsで「Allow GitHub Actions to create and approve pull requests」を有効にしてください。組織ポリシーで禁止されている場合は管理者の設定が必要です。公開に使うEnvironmentは従来どおり `npm`、デプロイ元はmainです。
