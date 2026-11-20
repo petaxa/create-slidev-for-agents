@@ -25,6 +25,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "dependencies": {
+    "@clack/prompts": "1.7.0"
+  },
   "devDependencies": {
     "@ox-content/napi": "3.2.1",
     "@types/node": "^24.0.0",
@@ -32,7 +35,7 @@
     "vite-plus": "catalog:"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.12.0"
   },
   "packageManager": "pnpm@10.32.1"
 }

@@ -15,7 +15,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createInterface, type Interface } from "node:readline/promises";
+import * as prompts from "@clack/prompts";
 
 import {
   cloneGitHubRepository,
@@ -38,6 +38,7 @@ export interface CliOptions {
   install: boolean;
   title?: string;
   version: boolean;
+  yes: boolean;
 }
 
 export interface Logger {
@@ -76,6 +77,7 @@ Options:
   --title <title>       Set the presentation title
   --design-repo <url>   GitHub file, folder, or repository URL
   --design-path <path>  Directory within the design repository
+  -y, --yes             Use defaults for unanswered questions
   --install             Install dependencies after creating files
   --dry-run             Preview without creating files or installing dependencies
   -h, --help            Show this help
@@ -92,6 +94,7 @@ export function parseArgs(argv: string[]): CliOptions {
     install: false,
     title: undefined,
     version: false,
+    yes: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -113,6 +116,11 @@ export function parseArgs(argv: string[]): CliOptions {
 
     if (argument === "-v" || argument === "--version") {
       result.version = true;
+      continue;
+    }
+
+    if (argument === "-y" || argument === "--yes") {
+      result.yes = true;
       continue;
     }
 
@@ -428,49 +436,203 @@ async function readVersion(): Promise<string> {
   return packageJson.version;
 }
 
-async function promptForDirectory(prompt: Interface): Promise<string> {
-  const answer = await prompt.question("Project directory (my-slidev-deck): ");
-  return answer.trim() || "my-slidev-deck";
+class PromptCancelled extends Error {}
+
+function answer<T>(value: T | symbol): T {
+  if (prompts.isCancel(value)) throw new PromptCancelled();
+  return value as T;
 }
 
-async function promptForDesignRepository(prompt: Interface): Promise<string | undefined> {
-  const source = await prompt.question("GitHub design file or folder URL (leave blank to skip): ");
-  return source.trim() || undefined;
+function validationMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function configureInteractively(options: CliOptions): Promise<CliOptions> {
+  const configured = { ...options };
+  if (!configured.directory) {
+    let previous = "my-slidev-deck";
+    for (;;) {
+      const directory = answer(
+        await prompts.text({
+          message: "Where should we create your slides?",
+          placeholder: "my-slidev-deck",
+          defaultValue: "my-slidev-deck",
+          initialValue: previous,
+          validate: (value) => (!value?.trim() ? "Enter a directory name." : undefined),
+        }),
+      ).trim();
+      try {
+        await validateTarget(path.resolve(directory));
+        configured.directory = directory;
+        break;
+      } catch (error) {
+        prompts.log.error(validationMessage(error));
+        previous = directory;
+      }
+    }
+  } else {
+    await validateTarget(path.resolve(configured.directory));
+  }
+
+  if (configured.title === undefined) {
+    const defaultTitle = titleFromDirectory(path.basename(path.resolve(configured.directory)));
+    configured.title =
+      answer(
+        await prompts.text({
+          message: "What is your presentation called?",
+          placeholder: defaultTitle,
+          defaultValue: defaultTitle,
+        }),
+      ).trim() || defaultTitle;
+  }
+
+  if (!configured.designRepository) {
+    const design = answer(
+      await prompts.select({
+        message: "Would you like to bring a design guide?",
+        initialValue: "skip",
+        options: [
+          { value: "skip", label: "Start with the slide guide", hint: "No extra setup" },
+          { value: "github", label: "Import from GitHub", hint: "Copy a design file or folder" },
+        ],
+      }),
+    );
+    if (design === "github") {
+      configured.designRepository = answer(
+        await prompts.text({
+          message: "GitHub file, folder, or repository URL",
+          placeholder: "owner/repository or https://github.com/owner/repo/tree/main/design",
+          validate: (value) => {
+            try {
+              parseGitHubDesignSource(value ?? "", configured.designPath);
+            } catch (error) {
+              return validationMessage(error);
+            }
+          },
+        }),
+      ).trim();
+      if (
+        configured.designPath === undefined &&
+        !parseGitHubDesignSource(configured.designRepository).ref
+      ) {
+        configured.designPath =
+          answer(
+            await prompts.text({
+              message: "Which folder should we import? (Enter for repository root)",
+              placeholder: "e.g. design-md/10x",
+              validate: (value) => {
+                try {
+                  parseGitHubDesignSource(configured.designRepository!, value?.trim() || undefined);
+                } catch (error) {
+                  return validationMessage(error);
+                }
+              },
+            }),
+          ).trim() || undefined;
+      }
+    }
+  }
+
+  const source = configured.designRepository
+    ? parseGitHubDesignSource(configured.designRepository, configured.designPath)
+    : undefined;
+  prompts.note(
+    [
+      `Directory: ${path.resolve(configured.directory)}`,
+      `Title: ${configured.title}`,
+      `Design: ${source ? `${source.repositoryUrl}${source.ref ? ` @ ${source.ref}` : ""} / ${source.directory || "(root)"}` : "Slide guide only"}`,
+      `Dependencies: ${configured.install ? `Install with ${detectPackageManager()}` : "Install later"}`,
+    ].join("\n"),
+    configured.dryRun ? "Preview settings — no files will be written" : "Your settings",
+  );
+  if (
+    !answer(
+      await prompts.confirm({
+        message: configured.dryRun ? "Preview with these settings?" : "Create your slides?",
+        initialValue: true,
+      }),
+    )
+  )
+    throw new PromptCancelled();
+  return configured;
 }
 
 export async function runCli(argv: string[]): Promise<void> {
-  const options = parseArgs(argv);
+  let options = parseArgs(argv);
 
   if (options.help) {
     console.log(helpText.trim());
     return;
   }
-
   if (options.version) {
     console.log(await readVersion());
     return;
   }
-
-  const prompt =
-    process.stdin.isTTY && process.stdout.isTTY
-      ? createInterface({ input: process.stdin, output: process.stdout })
-      : undefined;
+  // Reject invalid explicit options before asking unrelated questions.
+  if (options.designPath && !options.designRepository) {
+    throw new Error("--design-path requires --design-repo.");
+  }
+  if (options.designRepository) {
+    parseGitHubDesignSource(options.designRepository, options.designPath);
+  }
+  const interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY && !options.yes);
+  let progress: ReturnType<typeof prompts.spinner> | undefined;
   try {
-    const directory =
-      options.directory ?? (prompt ? await promptForDirectory(prompt) : "my-slidev-deck");
-    const promptedDesignRepository =
-      !options.designRepository && prompt ? await promptForDesignRepository(prompt) : undefined;
-    const designRepository = options.designRepository ?? promptedDesignRepository;
-    const designPath = options.designPath;
-    await scaffold({
-      designPath,
-      designRepository,
-      directory,
+    if (interactive) {
+      prompts.intro("create-slidev-for-agents");
+      options = await configureInteractively(options);
+      if (!options.dryRun) {
+        progress = prompts.spinner();
+        progress.start(
+          options.designRepository
+            ? "Importing design guide and creating slides"
+            : "Creating your slides",
+        );
+      }
+    }
+    const messages: string[] = [];
+    const result = await scaffold({
+      designPath: options.designPath,
+      designRepository: options.designRepository,
+      directory: options.directory ?? "my-slidev-deck",
       dryRun: options.dryRun,
-      install: options.install,
+      install: interactive ? false : options.install,
       title: options.title,
+      logger: interactive ? { log: (message) => messages.push(message) } : console,
     });
-  } finally {
-    prompt?.close();
+    if (interactive) {
+      progress?.stop(`Created ${result.deckTitle}`);
+      progress = undefined;
+      if (options.install && !options.dryRun) {
+        prompts.log.step(`Installing dependencies with ${result.packageManager}…`);
+        await runInstall(result.packageManager, result.targetDirectory);
+      }
+      // scaffold's plain output remains available for scripts; the TTY gets a compact next step.
+      const commands: string[] = [];
+      const displayTarget = relativeTarget(process.cwd(), result.targetDirectory);
+      if (displayTarget !== ".") commands.push(`cd ${quotePathForDisplay(displayTarget)}`);
+      if (!options.install || options.dryRun) {
+        commands.push(
+          result.packageManager === "yarn" ? "yarn" : `${result.packageManager} install`,
+        );
+      }
+      commands.push("vp run dev");
+      if (options.dryRun) {
+        prompts.note(messages.join("\n").trim(), "Preview — no files were written");
+        if (options.install)
+          prompts.log.info(`Would install dependencies with ${result.packageManager}.`);
+      } else {
+        prompts.note(commands.join("\n"), "Next steps");
+      }
+      prompts.outro(options.dryRun ? "Preview complete." : "Your slides are ready.");
+    }
+  } catch (error) {
+    progress?.error("Could not create slides");
+    if (error instanceof PromptCancelled) {
+      prompts.cancel("Setup cancelled. No files were created.");
+      process.exitCode = 130;
+      return;
+    }
+    throw error;
   }
 }
