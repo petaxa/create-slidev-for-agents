@@ -3,6 +3,10 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   run: {
     tasks: {
+      release: {
+        command: "node scripts/release.ts",
+        cache: false,
+      },
       "playground:cli": {
         command: "vp pack && node ./dist/create-slidev.mjs --dry-run",
         cache: false,
