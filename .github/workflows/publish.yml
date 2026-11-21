@@ -1,9 +1,9 @@
 name: Publish npm package
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
+    paths: [package.json]
 
 permissions: {}
 
@@ -12,11 +12,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  detect:
+    name: Detect version increase
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      increased: ${{ steps.version.outputs.increased }}
+    steps:
+      - name: Checkout pushed commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
+        with:
+          node-version-file: .node-version
+          run-install: false
+      - name: Compare versions before and after push
+        id: version
+        run: node scripts/release-ci.ts detect
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+
   build:
-    if: >-
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      startsWith(github.event.pull_request.head.ref, 'release/v')
+    needs: detect
+    if: needs.detect.outputs.increased == 'true'
     name: Test and pack package
     runs-on: ubuntu-24.04
 
@@ -28,7 +52,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Set up Vite+
@@ -51,8 +75,6 @@ jobs:
         run: vp pack
 
       - name: Verify stable package version
-        env:
-          RELEASE_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           node --input-type=module <<'NODE'
           import { readFile } from "node:fs/promises";
@@ -66,10 +88,6 @@ jobs:
 
           if (typeof packageJson.version !== "string" || !stableSemver.test(packageJson.version)) {
             throw new Error(`安定版ではないversionは公開できません: ${packageJson.version}`);
-          }
-
-          if (process.env.RELEASE_BRANCH !== `release/v${packageJson.version}`) {
-            throw new Error("Release branch version must match package.json version.");
           }
 
           console.log(`Package: ${packageJson.name}@${packageJson.version}`);
@@ -123,7 +141,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up Vite+
         uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0

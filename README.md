@@ -198,6 +198,10 @@ vp run release major  # 0.0.2 → 1.0.0
 
 pushを受けて「Create release PR」がGitHub標準のGITHUB_TOKENとREST APIでmain宛てのPRを作成します。同じブランチのPRがあれば再利用します。リリースPRも通常のレビュー・ブランチ保護の対象です。「CI」はreleaseブランチへのpushでも検証を行うため、botが作成したPRのイベントに依存しません。
 
-同じリポジトリの `release/vX.Y.Z` ブランチからmainへのPRがマージされた場合だけ「Publish npm package」の公開ジョブを実行します。公開対象はPRのマージコミットSHAに固定し、ブランチ名とpackage.jsonのバージョンが一致することを確認してから検証・ビルド・`npm stage publish`を行います。Squash mergeにも対応します。通常のPRマージや、マージせず閉じたPRでは公開ジョブをスキップします（PRを閉じたイベントのワークフロー履歴は残ります）。成功後、npmのStaged Packagesで内容を確認してApproveすると公開されます。失敗したCIはGitHub Actionsから再実行できます。
+mainへのpushでルートの `package.json` が変更された場合だけ「Publish npm package」を起動します。最初の軽いジョブでpush前後のコミットの `version` を比較し、安定版のバージョンが増えた場合だけ検証・ビルド・`npm stage publish`を行います。依存関係やscriptsだけの変更では公開処理をスキップし、バージョンの減少・不正な形式・比較元コミットの取得失敗はエラーにします。複数コミットのpushも前後全体で比較し、コミットメッセージやマージ方法には依存しません。
+
+公開対象はそのpushのコミットSHAに固定します。release PR以外でバージョンを上げた場合も公開対象になります。成功後、npmのStaged Packagesで内容を確認してApproveすると公開されます。失敗したCIはGitHub Actionsから再実行できます。
 
 初回のみ、GitHubのSettings → Actions → General → Workflow permissionsで「Allow GitHub Actions to create and approve pull requests」を有効にしてください。組織ポリシーで禁止されている場合は管理者の設定が必要です。公開に使うEnvironmentは従来どおり `npm`、デプロイ元はmainです。
+
+`npm` EnvironmentのDeployment branches and tagsはmainを許可します。PRイベントで公開しなくなるため、以前追加した `refs/pull/*/merge` の許可は削除できます。
